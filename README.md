@@ -1,7 +1,7 @@
 # Vesper-BirdVox-70k
 Python scripts for building a Vesper archive from the BirdVox-70k data set.
 
-[BirdVox-70k](http://doi.org/10.5281/zenodo.1038282) is a data set for avian flight call detection, created as part of the [BirdVox](https://wp.nyu.edu/birdvox) project.
+[BirdVox-70k](http://doi.org/10.5281/zenodo.1038282) is a data set for avian flight call detection, created as part of the [BirdVox](https://wp.nyu.edu/birdvox) project, a collaboration between researchers at the [Cornell Lab of Ornithology](http://birds.cornell.edu) and NYU's [Music and Audio Research Laboratory](https://steinhardt.nyu.edu/marl/).
 
 The citation for BirdVox-70k is:
 
