@@ -9,4 +9,4 @@ The citation for BirdVox-70k is:
     BirdVox-70k: a dataset for avian flight call detection [Data set].
     Zenodo. http://doi.org/10.5281/zenodo.1038282
 
-This repository is part of the [Vesper](https://github.com/HaroldMills/Vesper) project, and contains scripts that help build a Vesper archive from BirdVox-70k. The archive provides an easy way to view the flight calls of BirdVox-70k.
+This repository is part of the [Vesper](https://github.com/HaroldMills/Vesper) project, and contains scripts that help build a Vesper archive from BirdVox-70k. The archive provides an easy way to view spectrograms of and listen to the flight calls of BirdVox-70k.
