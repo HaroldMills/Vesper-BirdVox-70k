@@ -1,6 +1,8 @@
 """
 Extracts BirdVox-70k call clips from recordings and adds them to a Vesper
 archive.
+
+This script must be run from the archive directory.
 """
 
 
