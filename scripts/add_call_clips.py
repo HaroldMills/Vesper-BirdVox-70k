@@ -46,12 +46,16 @@ FREQ_THRESHOLD = 5000    # hertz
 # centered at the indicated center times.
 CLIP_DURATION = .5       # seconds
 
+# Call center time within each clip.
+CALL_CENTER_TIME = CLIP_DURATION / 2
+
 WAVE_SAMPLE_DTYPE = np.dtype('<i2')
 
 
 def main():
     
-    center_info = AnnotationInfo.objects.get(name='Call Center')
+    center_time_info = AnnotationInfo.objects.get(name='Call Center Time')
+    center_freq_info = AnnotationInfo.objects.get(name='Call Center Freq')
     classification_info = AnnotationInfo.objects.get(name='Classification')
     annotation_user = User.objects.get(username='Vesper')
     
@@ -123,15 +127,24 @@ def main():
                     
                 else:
                     
-                    # Add center annotation.
-                    center_json = get_center_json(recording, time, freq)
+                    # Add center time annotation.
+                    center_time = format_num(CALL_CENTER_TIME, 3)
                     StringAnnotation.objects.create(
                         clip=clip,
-                        info=center_info,
-                        value=center_json,
+                        info=center_time_info,
+                        value=center_time,
                         creation_time=creation_time,
                         creating_user=annotation_user)
-                    
+                   
+                    # Add center frequency annotation.
+                    center_freq = format_num(freq, 0)
+                    StringAnnotation.objects.create(
+                        clip=clip,
+                        info=center_freq_info,
+                        value=center_freq,
+                        creation_time=creation_time,
+                        creating_user=annotation_user)
+                   
                     # Add classification annotation.
                     classification = get_classification(freq)
                     StringAnnotation.objects.create(
@@ -164,25 +177,25 @@ def get_recording_file_path(recording):
     return Path(recording.files.get().path)
                 
     
-def get_center_json(recording, time, freq):
-    delta = datetime.timedelta(seconds=time)
-    dt = recording.start_time + delta
-    time_string = format_datetime(dt)
-    freq_string = format_freq(freq)
-    return '{{"time": "{}", "freq": {}}}'.format(time_string, freq_string)
+def format_num(x, n):
+    
+    # Create format string.
+    f = '{{:.{}f}}'.format(n)
+    
+    # Format x as decimal number with n digits after the decimal point.
+    s = f.format(x)
+    
+    if n != 0:
+        
+        # Strip trailing zeros from fraction.
+        s = s.rstrip('0')
+        
+        # Strip decimal point if no fractional digits remain.
+        s = s.rstrip('.')
+    
+    return s
 
 
-def format_datetime(dt):
-    if dt.microsecond == 0:
-        return dt.strftime('%Y-%m-%d %H:%M:%S')
-    else:
-        return dt.strftime('%Y-%m-%d %H:%M:%S.%f').rstrip('0')
-    
-    
-def format_freq(freq):
-    return '{:g}'.format(freq)
-
-    
 def get_classification(freq):
     return 'Call.High' if freq >= FREQ_THRESHOLD else 'Call.Low'
     
