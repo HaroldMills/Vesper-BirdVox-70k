@@ -4,14 +4,11 @@ Creates Raven selection tables from the BirdVox-70k annotation CSV files.
 
 
 import csv
-import os
 
 import vesper_birdvox.utils as utils
 
 
-SELECTIONS_DIR_PATH = utils.BIRDVOX_DIR_PATH / 'BirdVox-70k_selections'
-SELECTIONS_FILE_NAME_FORMAT = 'BirdVox-70k_selections_unit{:02d}.txt'
-SELECTIONS_HEADER = (
+SELECTION_TABLE_HEADER = (
     'Selection', 'View', 'Channel', 'Begin Time (s)', 'End Time (s)',
     'Low Freq (Hz)', 'High Freq (Hz)', 'Annotation')
 
@@ -23,29 +20,22 @@ def main():
         
 def create_selection_table(unit_num):
             
-    annotations_file_path = utils.get_annotations_file_path(unit_num)
+    clip_infos = utils.get_station_clip_infos(unit_num)
     
-    selections_file_name = SELECTIONS_FILE_NAME_FORMAT.format(unit_num)
-    selections_file_path = SELECTIONS_DIR_PATH / selections_file_name
+    file_path = utils.get_raven_selection_table_file_path(unit_num)
     
-    os.makedirs(str(SELECTIONS_DIR_PATH), exist_ok=True)
-    
-    with open(str(annotations_file_path)) as annotations_file:
+    with open(str(file_path), 'w') as file_:
         
-        reader = csv.reader(annotations_file)
+        writer = csv.writer(file_, delimiter='\t')
         
-        # Skip input header.
-        next(reader)
+        writer.writerow(SELECTION_TABLE_HEADER)
+        
+        for i, (center_index, center_freq) in enumerate(clip_infos):
             
-        with open(str(selections_file_path), 'w') as selections_file:
-            
-            writer = csv.writer(selections_file, delimiter='\t')
-            
-            writer.writerow(SELECTIONS_HEADER)
-            
-            for i, row in enumerate(reader):
+            if center_freq != 0:
                 
-                _, center_time, center_freq, annotation = row
+                center_time = center_index / utils.SAMPLE_RATE
+                classification = utils.get_classification(center_freq)
                 
                 selection_num = str(i + 1)
                 
@@ -53,13 +43,13 @@ def create_selection_table(unit_num):
                     selection_num, 'Waveform 1', '1',
                     center_time, center_time,
                     center_freq, center_freq,
-                    annotation))
+                    classification))
         
                 writer.writerow((
                     selection_num, 'Spectrogram 1', '1',
                     center_time, center_time,
                     center_freq, center_freq,
-                    annotation))
+                    classification))
     
     
 if __name__ == '__main__':

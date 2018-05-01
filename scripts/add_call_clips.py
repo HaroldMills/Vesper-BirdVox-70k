@@ -7,11 +7,18 @@ This script must be run from the archive directory.
 
 
 from pathlib import Path
-import csv
 import datetime
 import os
 import sys
 import wave
+
+import numpy as np
+
+import vesper.util.audio_file_utils as audio_file_utils
+import vesper.util.signal_utils as signal_utils
+import vesper.util.time_utils as time_utils
+import vesper_birdvox.utils as utils
+
 
 # Set up Django.
 os.environ['DJANGO_SETTINGS_MODULE'] = 'vesper.django.project.settings'
@@ -19,42 +26,23 @@ import django
 django.setup()
 
 from django.db.utils import IntegrityError
-import numpy as np
 
 from vesper.django.app.models import (
     AnnotationInfo, Clip, Processor, Recording, StringAnnotation, User)
-import vesper.util.audio_file_utils as audio_file_utils
-import vesper.util.signal_utils as signal_utils
-import vesper.util.time_utils as time_utils
-import vesper_birdvox.utils as utils
 
-
-# Call center frequency threshold separating "Call.Low" and "Call.High"
-# classifications. The BirdVox-70k data set has only a "flight call"
-# category, not low- and high-frequency categories, but we find those
-# additional categories useful since they correspond approximately to
-# the familiar thrush and tseep categories. We chose the threshold value
-# by visual inspection of the call center frequency histogram plotted by
-# the `plot_center_frequency_histogram` script of this package. The
-# threshold is also consistent with traditional conceptions of the
-# thrush and tseep frequency ranges.
-FREQ_THRESHOLD = 5000    # hertz
 
 # Duration of clips extracted from continuous recordings. The BirdVox-70k
 # data set provides the center time and frequency of each call, but no
 # duration information. We extract clips of duration `CLIP_DURATION`
 # centered at the indicated center times.
-CLIP_DURATION = .5       # seconds
-
-# Call center time within each clip.
-CALL_CENTER_TIME = CLIP_DURATION / 2
+CLIP_DURATION = .25      # seconds
 
 WAVE_SAMPLE_DTYPE = np.dtype('<i2')
 
 
 def main():
     
-    center_time_info = AnnotationInfo.objects.get(name='Call Center Time')
+    center_index_info = AnnotationInfo.objects.get(name='Call Center Index')
     center_freq_info = AnnotationInfo.objects.get(name='Call Center Freq')
     classification_info = AnnotationInfo.objects.get(name='Classification')
     annotation_user = User.objects.get(username='Vesper')
@@ -72,29 +60,28 @@ def main():
         night = station.get_night(recording.start_time)
         detector = Processor.objects.get(name='Andrew Farnsworth')
         
-        call_centers = get_call_centers(recording)
+        clip_infos = get_recording_clip_infos(recording)
         
         recording_file_path = get_recording_file_path(recording)
         
         with wave.open(str(recording_file_path), 'rb') \
                 as recording_file_reader:
             
-            sample_period = 1 / sample_rate
-            existing_times = set()
-            
-            for time, freq in call_centers:
+            center_indices = set()
+
+            for center_index, center_freq in clip_infos:
                 
-                # Some call center times in the input data are duplicates,
-                # which violates a Vesper archive database uniqueness
-                # constraint. We bump duplicate times by one sample period
-                # until they are unique to resolve the issue.
-                while time in existing_times:
-                    time += sample_period
-                existing_times.add(time)
-                    
-                start_offset = time - CLIP_DURATION / 2
-                start_index = \
-                    signal_utils.seconds_to_frames(start_offset, sample_rate)
+                # Some call center indices in the input data are
+                # duplicates, so that clip start indices computed
+                # from them violate a Vesper archive database
+                # uniqueness constraint. We bump duplicate indices
+                # by one until they are unique to resolve the issue.
+                while center_index in center_indices:
+                    center_index += 1
+                center_indices.add(center_index)
+
+                start_index = center_index - length // 2
+                start_offset = start_index / sample_rate
                 start_time_delta = datetime.timedelta(seconds=start_offset)
                 start_time = recording.start_time + start_time_delta
                 
@@ -121,32 +108,14 @@ def main():
                 except IntegrityError:
                     
                     print((
-                        'Duplicate clip with center time {}. '
-                        'Clip will be ignored.').format(time),
+                        'Duplicate clip with center index {}. '
+                        'Clip will be ignored.').format(center_index),
                         file=sys.stderr)
                     
                 else:
                     
-                    # Add center time annotation.
-                    center_time = format_num(CALL_CENTER_TIME, 3)
-                    StringAnnotation.objects.create(
-                        clip=clip,
-                        info=center_time_info,
-                        value=center_time,
-                        creation_time=creation_time,
-                        creating_user=annotation_user)
-                   
-                    # Add center frequency annotation.
-                    center_freq = format_num(freq, 0)
-                    StringAnnotation.objects.create(
-                        clip=clip,
-                        info=center_freq_info,
-                        value=center_freq,
-                        creation_time=creation_time,
-                        creating_user=annotation_user)
-                   
                     # Add classification annotation.
-                    classification = get_classification(freq)
+                    classification = get_classification(center_freq)
                     StringAnnotation.objects.create(
                         clip=clip,
                         info=classification_info,
@@ -154,50 +123,39 @@ def main():
                         creation_time=creation_time,
                         creating_user=annotation_user)
                     
+                    if classification.startswith('Call.'):
+                        
+                        # Add center time annotation.
+                        StringAnnotation.objects.create(
+                            clip=clip,
+                            info=center_index_info,
+                            value=str(center_index),
+                            creation_time=creation_time,
+                            creating_user=annotation_user)
+                       
+                        # Add center frequency annotation.
+                        StringAnnotation.objects.create(
+                            clip=clip,
+                            info=center_freq_info,
+                            value=str(center_freq),
+                            creation_time=creation_time,
+                            creating_user=annotation_user)
+                   
                     create_clip_audio_file(clip, recording_file_reader)
                 
                 
-def get_call_centers(recording):
-    annotations_file_path = get_annotations_file_path(recording)
-    with open(str(annotations_file_path)) as annotations_file:
-        reader = csv.reader(annotations_file)
-        return [
-            (float(r[1]), float(r[2]))
-            for r in reader
-            if r[3] == 'flight call']
-
-
-def get_annotations_file_path(recording):
-    unit_num = int(recording.station.name.split()[-1])
-    return utils.get_annotations_file_path(unit_num)
+def get_recording_clip_infos(recording):
+    station_num = int(recording.station.name.split()[-1])
+    return utils.get_station_clip_infos(station_num)
     
-
+    
 def get_recording_file_path(recording):
     # We assume here that a recording comprises a single file.
     return Path(recording.files.get().path)
                 
     
-def format_num(x, n):
-    
-    # Create format string.
-    f = '{{:.{}f}}'.format(n)
-    
-    # Format x as decimal number with n digits after the decimal point.
-    s = f.format(x)
-    
-    if n != 0:
-        
-        # Strip trailing zeros from fraction.
-        s = s.rstrip('0')
-        
-        # Strip decimal point if no fractional digits remain.
-        s = s.rstrip('.')
-    
-    return s
-
-
-def get_classification(freq):
-    return 'Call.High' if freq >= FREQ_THRESHOLD else 'Call.Low'
+def get_classification(center_freq):
+    return 'Call.High' if center_freq >= utils.FREQ_THRESHOLD else 'Call.Low'
     
     
 def create_clip_audio_file(clip, recording_file_reader):
