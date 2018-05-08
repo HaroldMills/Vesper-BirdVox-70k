@@ -10,7 +10,7 @@ def main():
     
     for unit_num in utils.UNIT_NUMS:
         
-        file_path = utils.get_unit_hdf5_file_path(unit_num)
+        file_path = utils.get_unit_clips_hdf5_file_path(unit_num)
         
         with h5py.File(file_path, 'r') as file_:
             

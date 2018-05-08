@@ -60,7 +60,7 @@ def main():
         night = station.get_night(recording.start_time)
         detector = Processor.objects.get(name='BirdVox-70k')
         
-        clip_infos = get_recording_clip_infos(recording)
+        clip_data = get_recording_clip_data(recording)
         
         recording_file_path = get_recording_file_path(recording)
         
@@ -69,7 +69,7 @@ def main():
             
             center_indices = set()
 
-            for center_index, center_freq in clip_infos:
+            for center_index, center_freq in clip_data:
                 
                 # Some call center indices in the input data are
                 # duplicates, so that clip start indices computed
@@ -144,9 +144,9 @@ def main():
                     create_clip_audio_file(clip, recording_file_reader)
                 
                 
-def get_recording_clip_infos(recording):
+def get_recording_clip_data(recording):
     station_num = int(recording.station.name.split()[-1])
-    return utils.get_unit_clip_infos(station_num)
+    return utils.get_unit_clip_data(station_num)
     
     
 def get_recording_file_path(recording):

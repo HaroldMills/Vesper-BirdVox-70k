@@ -25,8 +25,8 @@ def main():
     
     
 def get_call_center_freqs(unit_num):
-    infos = utils.get_unit_clip_infos(unit_num)
-    return [freq for _, freq in infos if freq != 0]
+    data = utils.get_unit_clip_data(unit_num)
+    return [freq for _, freq in data if freq != 0]
 
 
 if __name__ == '__main__':

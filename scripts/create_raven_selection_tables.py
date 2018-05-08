@@ -20,7 +20,7 @@ def main():
         
 def create_selection_table(unit_num):
             
-    clip_infos = utils.get_unit_clip_infos(unit_num)
+    clip_data = utils.get_unit_clip_data(unit_num)
     
     file_path = utils.get_raven_selection_table_file_path(unit_num)
     
@@ -30,7 +30,7 @@ def create_selection_table(unit_num):
         
         writer.writerow(SELECTION_TABLE_HEADER)
         
-        for i, (center_index, center_freq) in enumerate(clip_infos):
+        for i, (center_index, center_freq) in enumerate(clip_data):
             
             if center_freq != 0:
                 
