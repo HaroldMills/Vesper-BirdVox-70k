@@ -16,10 +16,10 @@ TIMESTAMPS = {
 
 def main():
     
-    for station_num, timestamp in sorted(TIMESTAMPS.items()):
+    for unit_num, timestamp in sorted(TIMESTAMPS.items()):
         dt = datetime.datetime.fromtimestamp(timestamp)
         formatted_dt = dt.strftime('%Y-%m-%d_%H.%M.%S')
-        print('Station {:02d}_{}_Z'.format(station_num, formatted_dt))
+        print('Station {:02d}_{}_Z'.format(unit_num, formatted_dt))
         
 
 if __name__ == '__main__':

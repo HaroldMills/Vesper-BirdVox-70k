@@ -58,7 +58,7 @@ def main():
         sample_rate = recording.sample_rate
         length = int(round(CLIP_DURATION * sample_rate))
         night = station.get_night(recording.start_time)
-        detector = Processor.objects.get(name='Andrew Farnsworth')
+        detector = Processor.objects.get(name='BirdVox-70k')
         
         clip_infos = get_recording_clip_infos(recording)
         
@@ -146,16 +146,22 @@ def main():
                 
 def get_recording_clip_infos(recording):
     station_num = int(recording.station.name.split()[-1])
-    return utils.get_station_clip_infos(station_num)
+    return utils.get_unit_clip_infos(station_num)
     
     
 def get_recording_file_path(recording):
-    # We assume here that a recording comprises a single file.
-    return Path(recording.files.get().path)
+    # We assume that a recording comprises a single file.
+    file_name = recording.files.get().path
+    return Path.cwd() / 'Recordings' / file_name
                 
     
 def get_classification(center_freq):
-    return 'Call.High' if center_freq >= utils.FREQ_THRESHOLD else 'Call.Low'
+    if center_freq == 0:
+        return 'Noise'
+    elif center_freq < utils.FREQ_THRESHOLD:
+        return 'Call.Low'
+    else:
+        return 'Call.High'
     
     
 def create_clip_audio_file(clip, recording_file_reader):

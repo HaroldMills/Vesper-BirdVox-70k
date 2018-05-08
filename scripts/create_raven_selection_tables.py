@@ -20,7 +20,7 @@ def main():
         
 def create_selection_table(unit_num):
             
-    clip_infos = utils.get_station_clip_infos(unit_num)
+    clip_infos = utils.get_unit_clip_infos(unit_num)
     
     file_path = utils.get_raven_selection_table_file_path(unit_num)
     

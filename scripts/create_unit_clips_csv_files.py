@@ -16,7 +16,7 @@ def main():
     for unit_num in utils.UNIT_NUMS:
 
         hdf5_file_path = utils.get_unit_hdf5_file_path(unit_num)
-        csv_file_path = utils.get_station_clips_csv_file_path(unit_num)
+        csv_file_path = utils.get_unit_clips_csv_file_path(unit_num)
         
         with h5py.File(hdf5_file_path, 'r') as hdf5_file:
             
